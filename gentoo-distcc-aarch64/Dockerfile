@@ -1,0 +1,60 @@
+FROM gentoo/stage3-amd64
+
+ENV TARGETCHOST aarch64-unknown-linux-gnu
+
+EXPOSE 3632
+
+RUN touch /etc/init.d/functions.sh && \
+  echo 'EMERGE_DEFAULT_OPTS="--ask=n --jobs=8"' >> /etc/portage/make.conf && \
+  echo 'GENTOO_MIRRORS="http://distfiles.gentoo.org"' >> /etc/portage/make.conf
+
+RUN mkdir -p /etc/portage/repos.conf
+
+RUN mkdir -p /var/db/repos/gentoo
+
+RUN ( \
+  echo '[gentoo]'  && \
+  echo 'location = /var/db/repos/gentoo' && \
+  echo 'sync-type = rsync' && \
+  echo 'sync-uri = rsync://rsync.namerica.gentoo.org/gentoo-portage' && \
+  echo 'auto-sync = yes' \ 
+  ) > /etc/portage/repos.conf/gentoo.conf
+
+# Setup the portage directory and permissions 
+RUN mkdir -p /var/db/repos/gentoo/{distfiles,metadata,packages}
+RUN chown -R portage:portage /var/db/repos/gentoo
+RUN echo "masters = gentoo" > /var/db/repos/gentoo/metadata/layout.conf
+
+RUN mkdir -p /usr/local/portage-crossdev/{profiles,metadata} && \
+  echo 'crossdev' > /usr/local/portage-crossdev/profiles/repo_name && \
+  echo 'masters = gentoo' > /usr/local/portage-crossdev/metadata/layout.conf && \
+  chown -R portage:portage /usr/local/portage-crossdev
+
+RUN ( \
+    echo "[crossdev]" && \
+    echo "location = /usr/local/portage-crossdev" && \
+    echo "priority = 10" && \
+    echo "masters = gentoo" && \
+    echo "auto-sync = no" \
+  ) > /etc/portage/repos.conf/crossdev.conf
+
+RUN ( \
+    echo "#!/bin/sh" && \
+    echo "export CHOST=${TARGETCHOST}" && \
+    echo "eval \"\`gcc-config -E\`\"" && \
+    echo "exec distccd \"\$@\"" \
+  ) > /usr/local/sbin/distccd-launcher && \
+  chmod +x /usr/local/sbin/distccd-launcher
+
+# Sync portage 
+RUN emerge-webrsync -q && \
+	emerge --sync && \
+	eselect news read new && \
+	emerge --depclean && \
+	env-update && \
+	emerge crossdev && \
+	crossdev -t ${TARGETCHOST} --genv 'USE="cxx nls sanitize -multilib -fortran -mudflap -openmp"' && \
+	emerge distcc && \
+	rm -r /var/db/repos/gentoo /var/db/pkg /var/cache
+
+CMD ["/usr/local/sbin/distccd-launcher", "--allow", "0.0.0.0/0", "--user", "distcc", "--log-level", "notice", "--log-stderr", "--no-detach"]
