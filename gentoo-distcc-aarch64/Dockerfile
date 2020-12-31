@@ -47,6 +47,10 @@ RUN ( \
   ) > /usr/local/sbin/distccd-launcher && \
   chmod +x /usr/local/sbin/distccd-launcher
 
+# Attempt to bypass Docker build cache - this is a kludge
+ARG CACHEBUST=1
+RUN echo "$CACHEBUST"
+
 # Sync portage 
 RUN emerge-webrsync -q && \
 	emerge --sync && \
