@@ -56,10 +56,10 @@ RUN emerge-webrsync -q && \
 	emerge --sync && \
 	eselect news read new && \
 	env-update && \
+	emerge --update --newuse --deep --with-bdeps=y @world && \
 	emerge crossdev && \
 	crossdev -t ${TARGETCHOST} --genv 'USE="cxx nls sanitize -multilib -fortran -mudflap -openmp"' && \
 	emerge distcc  && \
-	emerge --update --newuse --deep --with-bdeps=y @world && \
 	emerge --depclean && \
 	rm -r /var/db/repos/gentoo /var/db/pkg /var/cache
 
