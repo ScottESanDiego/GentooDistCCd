@@ -1,4 +1,4 @@
-FROM gentoo/stage3-amd64
+FROM gentoo/stage3:nomultilib
 
 ENV TARGETCHOST aarch64-unknown-linux-gnu
 
@@ -58,7 +58,9 @@ RUN emerge-webrsync -q && \
 	env-update && \
 	emerge crossdev && \
 	crossdev -t ${TARGETCHOST} --genv 'USE="cxx nls sanitize -multilib -fortran -mudflap -openmp"' && \
-	emerge distcc && \
+	emerge distcc  && \
+	emerge --update --newuse --deep --with-bdeps=y @world && \
+	emerge --depclean && \
 	rm -r /var/db/repos/gentoo /var/db/pkg /var/cache
 
 CMD ["/usr/local/sbin/distccd-launcher", "--allow", "0.0.0.0/0", "--user", "distcc", "--log-level", "notice", "--log-stderr", "--no-detach"]
