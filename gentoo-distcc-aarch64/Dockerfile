@@ -1,4 +1,4 @@
-FROM gentoo/stage3:nomultilib
+FROM gentoo/stage3:nomultilib-20210601
 
 ENV TARGETCHOST aarch64-unknown-linux-gnu
 
@@ -7,18 +7,22 @@ EXPOSE 3632
 RUN touch /etc/init.d/functions.sh && \
   echo 'EMERGE_DEFAULT_OPTS="--ask=n --jobs=8"' >> /etc/portage/make.conf && \
   echo 'GENTOO_MIRRORS="http://distfiles.gentoo.org"' >> /etc/portage/make.conf && \
-  echo 'FEATURES="noman nodoc noinfo"' >> /etc/portage/make.conf
+  echo 'FEATURES="noman nodoc noinfo -sandbox -usersandbox -ipc-sandbox -network-sandbox -pid-sandbox"' >> /etc/portage/make.conf
 
 RUN mkdir -p /etc/portage/repos.conf
 
 RUN mkdir -p /var/db/repos/gentoo
 
+#RUN ( \
+#  echo '[gentoo]'  && \
+#  echo 'location = /var/db/repos/gentoo' && \
+#  echo 'sync-type = rsync' && \
+#  echo 'sync-uri = rsync://rsync.us.gentoo.org/gentoo-portage' && \
+#  echo 'auto-sync = yes' \ 
+#  ) > /etc/portage/repos.conf/gentoo.conf
 RUN ( \
   echo '[gentoo]'  && \
-  echo 'location = /var/db/repos/gentoo' && \
-  echo 'sync-type = rsync' && \
-  echo 'sync-uri = rsync://rsync.us.gentoo.org/gentoo-portage' && \
-  echo 'auto-sync = yes' \ 
+  echo 'sync-type = webrsync' \
   ) > /etc/portage/repos.conf/gentoo.conf
 
 # Setup the portage directory and permissions 
@@ -52,11 +56,10 @@ ARG CACHEBUST=1
 RUN echo "$CACHEBUST"
 
 # Sync portage 
-RUN emerge-webrsync -q && \
-	emerge --sync && \
+RUN emerge --sync && \
 	eselect news read new && \
 	env-update && \
-	emerge --update --newuse --deep --with-bdeps=y @world && \
+#	emerge --update --newuse --deep --with-bdeps=y @world && \
 	emerge crossdev && \
 	crossdev -t ${TARGETCHOST} --genv 'USE="cxx nls sanitize -multilib -fortran -mudflap -openmp"' && \
 	emerge distcc  && \
