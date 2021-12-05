@@ -1,9 +1,10 @@
-FROM gentoo/stage3:nomultilib-20210601
+FROM gentoo/stage3:nomultilib
 
 ENV TARGETCHOST aarch64-unknown-linux-gnu
 
 EXPOSE 3632
 
+# Setup options for host (not target)
 RUN touch /etc/init.d/functions.sh && \
   echo 'EMERGE_DEFAULT_OPTS="--ask=n --jobs=8"' >> /etc/portage/make.conf && \
   echo 'GENTOO_MIRRORS="http://distfiles.gentoo.org"' >> /etc/portage/make.conf && \
@@ -11,24 +12,10 @@ RUN touch /etc/init.d/functions.sh && \
 
 RUN mkdir -p /etc/portage/repos.conf
 
-RUN mkdir -p /var/db/repos/gentoo
-
-#RUN ( \
-#  echo '[gentoo]'  && \
-#  echo 'location = /var/db/repos/gentoo' && \
-#  echo 'sync-type = rsync' && \
-#  echo 'sync-uri = rsync://rsync.us.gentoo.org/gentoo-portage' && \
-#  echo 'auto-sync = yes' \ 
-#  ) > /etc/portage/repos.conf/gentoo.conf
 RUN ( \
   echo '[gentoo]'  && \
   echo 'sync-type = webrsync' \
   ) > /etc/portage/repos.conf/gentoo.conf
-
-# Setup the portage directory and permissions 
-RUN mkdir -p /var/db/repos/gentoo/{distfiles,metadata,packages}
-RUN chown -R portage:portage /var/db/repos/gentoo
-RUN echo "masters = gentoo" > /var/db/repos/gentoo/metadata/layout.conf
 
 RUN mkdir -p /usr/local/portage-crossdev/{profiles,metadata} && \
   echo 'crossdev' > /usr/local/portage-crossdev/profiles/repo_name && \
@@ -43,6 +30,7 @@ RUN ( \
     echo "auto-sync = no" \
   ) > /etc/portage/repos.conf/crossdev.conf
 
+# Create bash script to launch distccd (our CMD)
 RUN ( \
     echo "#!/bin/sh" && \
     echo "export CHOST=${TARGETCHOST}" && \
@@ -51,15 +39,13 @@ RUN ( \
   ) > /usr/local/sbin/distccd-launcher && \
   chmod +x /usr/local/sbin/distccd-launcher
 
-# Attempt to bypass Docker build cache - this is a kludge
-ARG CACHEBUST=1
-RUN echo "$CACHEBUST"
+RUN mkdir -p /var/db/repos/gentoo/metadata
+RUN echo "masters = gentoo" > /var/db/repos/gentoo/metadata/layout.conf
 
-# Sync portage 
+# Sync portage and emerge crossdev stuff. This is the meat. 
 RUN emerge --sync && \
-	eselect news read new && \
-	env-update && \
-#	emerge --update --newuse --deep --with-bdeps=y @world && \
+	eselect news read --quiet new && \
+	env-update  && \
 	emerge crossdev && \
 	crossdev -t ${TARGETCHOST} --genv 'USE="cxx nls sanitize -multilib -fortran -mudflap -openmp"' && \
 	emerge distcc  && \
