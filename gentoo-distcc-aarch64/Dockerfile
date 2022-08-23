@@ -46,6 +46,7 @@ RUN echo "masters = gentoo" > /var/db/repos/gentoo/metadata/layout.conf
 RUN emerge --sync && \
 	eselect news read --quiet new && \
 	env-update  && \
+	emerge --update --deep --with-bdeps=y @world && \
 	emerge crossdev && \
 	crossdev -t ${TARGETCHOST} --genv 'USE="cxx nls sanitize -multilib -fortran -mudflap -openmp"' && \
 	emerge distcc  && \
