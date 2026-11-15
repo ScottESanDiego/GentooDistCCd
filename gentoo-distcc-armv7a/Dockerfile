@@ -1,6 +1,7 @@
-FROM gentoo/stage3-amd64
+#FROM gentoo/stage3-amd64
+FROM gentoo/stage3:nomultilib-systemd
 
-ENV TARGETCHOST armv7a-unknown-linux-gnueabihf
+ENV TARGETCHOST=armv7a-unknown-linux-gnueabihf
 
 EXPOSE 3632
 
