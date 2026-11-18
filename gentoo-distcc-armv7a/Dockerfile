@@ -57,7 +57,7 @@ RUN emerge-webrsync -q && \
 	eselect news read new && \
 	env-update && \
 	emerge crossdev && \
-	crossdev -t ${TARGETCHOST} --genv 'USE="cxx nls sanitize -multilib -fortran -mudflap -openmp"' && \
+	crossdev -t ${TARGETCHOST} --genv 'USE="cxx nls sanitize default-stack-clash-protection default-znow -multilib -fortran -mudflap -openmp"' && \
 	mkdir -p /etc/portage/package.use && \
 	printf '%s\n' 'llvm-core/llvm llvm_targets_ARM llvm_targets_X86' \
 	  'llvm-core/clang llvm_targets_ARM llvm_targets_X86 -extra -static-analyzer' \
